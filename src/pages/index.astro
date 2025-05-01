@@ -1,11 +1,44 @@
 ---
-import Welcome from '../components/Welcome.astro';
 import Layout from '../layouts/Layout.astro';
-
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
 ---
 
 <Layout>
-	<Welcome />
+	<section class="wrapper">
+		<h1>🔥 Days Since Tags Were Mentioned: <span class="count">0</span></h1>
+		<p>
+			Welp... someone said "tags" again. The counter resets. Every. Single.
+			Time. 😔
+		</p>
+		<p>⚠️ Longest streak without a mention: <strong>7 hours</strong></p>
+
+		<button class="reset" onclick="location.reload()">Reset Counter</button>
+	</section>
 </Layout>
+
+<style>
+	.wrapper {
+		text-align: center;
+		padding: 4rem 2rem;
+		font-family: system-ui, sans-serif;
+	}
+	.count {
+		font-size: 4rem;
+		color: crimson;
+		display: block;
+		margin: 1rem 0;
+	}
+	.reset {
+		margin-top: 2rem;
+		background-color: #111;
+		color: #fff;
+		padding: 0.75rem 1.5rem;
+		font-size: 1rem;
+		border: none;
+		border-radius: 0.5rem;
+		cursor: pointer;
+		transition: background-color 0.3s ease;
+	}
+	.reset:hover {
+		background-color: #333;
+	}
+</style>
