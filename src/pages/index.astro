@@ -1,18 +1,93 @@
 ---
 import Layout from '../layouts/Layout.astro';
+
+type ApiResponse = {
+	lastReset: number;
+	streaks: number[];
+};
+
+const res = await fetch(new URL('/api/status', Astro.url));
+const {lastReset, streaks}: ApiResponse = await res.json();
+
+function formatTimestamp(ms: number): string {
+	const date = new Date(ms);
+	return date.toLocaleString('en-US', {
+		dateStyle: 'medium',
+		timeStyle: 'short',
+	});
+}
 ---
 
 <Layout>
 	<section class="wrapper">
-		<h1>🔥 Days Since Tags Were Mentioned: <span class="count">0</span></h1>
-		<p>
-			Welp... someone said "tags" again. The counter resets. Every. Single.
-			Time. 😔
-		</p>
-		<p>⚠️ Longest streak without a mention: <strong>7 hours</strong></p>
+		<h1>🔥 Time Since "Tags" Were Mentioned</h1>
+		<h2><span id="timer">00:00:00</span></h2>
 
-		<button class="reset" onclick="location.reload()">Reset Counter</button>
+		<p>
+			Someone said "tags" again. The counter resets. Every. Single. Time. 😔
+		</p>
+
+		<button id="reset-btn" class="reset">Reset Counter</button>
+
+		<h3>🏆 Leaderboard</h3>
+		<ul class="leaderboard">
+			{streaks.map((streak) => <li>{formatTimestamp(streak)}</li>)}
+		</ul>
 	</section>
+
+	<script type="module" data-last-reset={lastReset}>
+		let startTime = Number(
+			document.currentScript?.dataset.lastReset || Date.now()
+		);
+		const socket = new WebSocket(`wss://${location.host}/api/ws`);
+
+		socket.addEventListener('message', (event) => {
+			try {
+				const data = JSON.parse(event.data);
+				if (data.type === 'update') {
+					startTime = data.lastReset;
+					const list = document.querySelector('.leaderboard');
+					if (list) {
+						list.innerHTML = '';
+						data.streaks.forEach((ts) => {
+							const li = document.createElement('li');
+							li.textContent = new Date(ts).toLocaleString();
+							list.appendChild(li);
+						});
+					}
+				}
+			} catch (e) {
+				console.error('WebSocket parse error', e);
+			}
+		});
+		const timerEl = document.getElementById('timer');
+		const resetBtn = document.getElementById('reset-btn');
+
+		const updateTimer = () => {
+			const now = Date.now();
+			const diff = new Date(now - startTime);
+			const h = diff.getUTCHours().toString().padStart(2, '0');
+			const m = diff.getUTCMinutes().toString().padStart(2, '0');
+			const s = diff.getUTCSeconds().toString().padStart(2, '0');
+			timerEl.textContent = `${h}:${m}:${s}`;
+		};
+
+		setInterval(updateTimer, 1000);
+		updateTimer();
+
+		resetBtn.addEventListener('click', async () => {
+			resetBtn.disabled = true;
+			resetBtn.textContent = 'Resetting...';
+
+			const res = await fetch('/api/reset', {method: 'POST'});
+			if (res.ok) location.reload();
+			else {
+				alert('Reset blocked: please wait before trying again.');
+				resetBtn.disabled = false;
+				resetBtn.textContent = 'Reset Counter';
+			}
+		});
+	</script>
 </Layout>
 
 <style>
@@ -20,13 +95,21 @@ import Layout from '../layouts/Layout.astro';
 		text-align: center;
 		padding: 4rem 2rem;
 		font-family: system-ui, sans-serif;
+		max-width: 600px;
+		margin: 0 auto;
 	}
-	.count {
-		font-size: 4rem;
+
+	h1 {
+		font-size: 2rem;
+	}
+
+	#timer {
+		font-size: 3rem;
 		color: crimson;
-		display: block;
 		margin: 1rem 0;
+		display: block;
 	}
+
 	.reset {
 		margin-top: 2rem;
 		background-color: #111;
@@ -38,7 +121,23 @@ import Layout from '../layouts/Layout.astro';
 		cursor: pointer;
 		transition: background-color 0.3s ease;
 	}
-	.reset:hover {
+	.reset:disabled {
+		cursor: not-allowed;
+		opacity: 0.6;
+	}
+	.reset:hover:not(:disabled) {
 		background-color: #333;
+	}
+
+	.leaderboard {
+		list-style: none;
+		padding: 0;
+		margin-top: 2rem;
+	}
+	.leaderboard li {
+		background: #f3f3f3;
+		margin: 0.5rem auto;
+		padding: 0.5rem 1rem;
+		border-radius: 0.25rem;
 	}
 </style>
